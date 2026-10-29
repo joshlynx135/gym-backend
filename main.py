@@ -28,8 +28,10 @@ class GymHandler(BaseHTTPRequestHandler):
         if content_length == 0:
             return {}
         body_string = self.rfile.read(content_length).decode('utf-8')
-        return json.loads(body_string)
-    
+        try:
+            return json.loads(body_string)
+        except json.JSONDecodeError:
+            raise ValueError("Malformed JSON in request body.")
     #HTTP methods
 
     def do_GET(self):
