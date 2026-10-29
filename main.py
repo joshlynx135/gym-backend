@@ -83,7 +83,9 @@ class GymHandler(BaseHTTPRequestHandler):
             # Route: PUT /api/members/<id>
             if len(parts) == 3 and parts[0] == "api" and parts[1] == "members":
                 member_id = parts[2]
-                updated_member = gym_service.update_member(member_id, body.get("name"))
+                updated_member = gym_service.update_member(member_id,
+                                                           body.get("name"),
+                                                           new_type=body.get("type"))
                 self._send_json(200, updated_member.to_dict())
 
             # Route: PUT /api/classes/<id>

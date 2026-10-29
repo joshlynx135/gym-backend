@@ -29,11 +29,26 @@ class GymService:
     def list_members(self):
         return list(self.members.values())
     
-    def update_member(self, member_id: str, new_name: str):
+    def update_member(self, member_id: str, new_name: str, new_type: str = None):
         member = self.get_member(member_id)
         if new_name:
             member.name = new_name
-        return member
+        if new_type:
+            target_type = new_type.upper()
+            current_type = "BASIC" if isinstance(member, BasicMember) else "PREMIUM"
+            
+            if target_type != current_type:
+                if target_type == "PREMIUM":
+                    new_member = PremiumMember(member_id, member.name)
+                elif target_type == "BASIC":
+                    new_member = BasicMember(member_id, member.name)
+                else:
+                    raise RuleViolationError("Type must be either 'BASIC' or 'PREMIUM'.")
+                
+                self.members[member_id] = new_member
+                member = new_member
+            return member
+        
 
     def delete_member(self, member_id: str):
         self.get_member(member_id)  # This should raise NotFoundError if the member doesn't exist I hope
