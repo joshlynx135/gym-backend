@@ -29,6 +29,15 @@ class GymService:
     def list_members(self):
         return list(self.members.values())
     
+    def update_member(self, member_id: str, new_name: str):
+        member = self.get_member(member_id)
+        if new_name:
+            member.name = new_name
+        return member
+
+    def delete_member(self, member_id: str):
+        self.get_member(member_id)  # This should raise NotFoundError if the member doesn't exist I hope
+        del self.members[member_id]
     #CRUD for workout classes
     
     def create_class(self, name: str, max_capacity: int):
@@ -48,6 +57,19 @@ class GymService:
             all_classes = [cls for cls in all_classes if cls.max_capacity >= min_capacity]
         return all_classes
     
+    def update_class(self, class_id: str, new_name: str = None, new_capacity: int = None):
+        workout_class = self.get_class(class_id)
+        if new_name:
+            workout_class.name = new_name
+        if new_capacity:
+            if new_capacity < len(workout_class.enrolled_members_ids):
+                raise RuleViolationError("Cannot lower capacity below current enrollments.")
+            workout_class.max_capacity = new_capacity
+        return workout_class
+    
+    def delete_class(self, class_id: str):
+        self.get_class(class_id)  
+        del self.classes[class_id]
     #DOMAIN opertions
     
     def book_class(self, member_id: str, class_id: str):

@@ -75,7 +75,53 @@ class GymHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": str(e)}) #not found
         except Exception as e:
             self._send_json(400, {"error": f"An unexpected error occurred: {str(e)}"}) #bad request
+    def do_PUT(self):
+        parts, _ = self._parse_url()
+        try:
+            body = self._read_body()
             
+            # Route: PUT /api/members/<id>
+            if len(parts) == 3 and parts[0] == "api" and parts[1] == "members":
+                member_id = parts[2]
+                updated_member = gym_service.update_member(member_id, body.get("name"))
+                self._send_json(200, updated_member.to_dict())
+
+            # Route: PUT /api/classes/<id>
+            elif len(parts) == 3 and parts[0] == "api" and parts[1] == "classes":
+                class_id = parts[2]
+                updated_class = gym_service.update_class(class_id, body.get("name"), body.get("max_capacity"))
+                self._send_json(200, updated_class.to_dict())
+            else:
+                self._send_json(404, {"error": "Endpoint not found"})
+
+        except RuleViolationError as e:
+            self._send_json(409, {"error": str(e)})
+        except NotFoundError as e:
+            self._send_json(404, {"error": str(e)})
+        except Exception as e:
+            self._send_json(400, {"error": "Bad Request."})
+
+    def do_DELETE(self):
+        parts, _ = self._parse_url()
+        try:
+            # Route: DELETE /api/members/<id>
+            if len(parts) == 3 and parts[0] == "api" and parts[1] == "members":
+                member_id = parts[2]
+                gym_service.delete_member(member_id)
+                self._send_json(200, {"message": "Member deleted."})
+
+            # Route: DELETE /api/classes/<id>
+            elif len(parts) == 3 and parts[0] == "api" and parts[1] == "classes":
+                class_id = parts[2]
+                gym_service.delete_class(class_id)
+                self._send_json(200, {"message": "Class deleted."})
+            else:
+                self._send_json(404, {"error": "Endpoint not found"})
+
+        except NotFoundError as e:
+            self._send_json(404, {"error": str(e)})
+        except Exception as e:
+            self._send_json(400, {"error": "Bad Request."})
 
 if __name__ == "__main__":
     port = 8080
