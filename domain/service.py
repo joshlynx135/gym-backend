@@ -29,14 +29,14 @@ class GymService:
     def list_members(self):
         return list(self.members.values())
     
-    def update_member(self, member_id: str, new_name: str, new_type: str = None):
+    def update_member(self, member_id: str, new_name: str = None, new_type: str = None):
         member = self.get_member(member_id)
-        if new_name:
+        if new_name is not None:
             member.name = new_name
-        if new_type:
+        if new_type is not None:
             target_type = new_type.upper()
             current_type = "BASIC" if isinstance(member, BasicMember) else "PREMIUM"
-            
+
             if target_type != current_type:
                 if target_type == "PREMIUM":
                     new_member = PremiumMember(member_id, member.name)
@@ -44,18 +44,23 @@ class GymService:
                     new_member = BasicMember(member_id, member.name)
                 else:
                     raise RuleViolationError("Type must be either 'BASIC' or 'PREMIUM'.")
-                
+
                 self.members[member_id] = new_member
                 member = new_member
-            return member
-        
+        return member
+
 
     def delete_member(self, member_id: str):
         self.get_member(member_id)  # This should raise NotFoundError if the member doesn't exist I hope
+        for workout_class in self.classes.values():
+            if member_id in workout_class.enrolled_members_ids:
+                workout_class.enrolled_members_ids.remove(member_id)
         del self.members[member_id]
     #CRUD for workout classes
     
     def create_class(self, name: str, max_capacity: int):
+        if max_capacity is None or max_capacity <= 0:
+            raise RuleViolationError("Capacity must be greater than 0.")
         class_id = f"c-{uuid.uuid4().hex[:4]}"
         workout_class = WorkoutClass(class_id, name, max_capacity)
         self.classes[class_id] = workout_class
@@ -74,9 +79,11 @@ class GymService:
     
     def update_class(self, class_id: str, new_name: str = None, new_capacity: int = None):
         workout_class = self.get_class(class_id)
-        if new_name:
+        if new_name is not None:
             workout_class.name = new_name
-        if new_capacity:
+        if new_capacity is not None:
+            if new_capacity <= 0:
+                raise RuleViolationError("Capacity must be greater than 0.")
             if new_capacity < len(workout_class.enrolled_members_ids):
                 raise RuleViolationError("Cannot lower capacity below current enrollments.")
             workout_class.max_capacity = new_capacity

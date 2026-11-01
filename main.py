@@ -27,6 +27,8 @@ class GymHandler(BaseHTTPRequestHandler):
         content_length = int(self.headers.get('Content-Length', 0))
         if content_length == 0:
             return {}
+        if content_length > 1024 * 1024:  # 1MB limit
+            raise ValueError("Payload too large.")
         body_string = self.rfile.read(content_length).decode('utf-8')
         try:
             return json.loads(body_string)
@@ -37,19 +39,35 @@ class GymHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parts, query = self._parse_url()
         try:
-            #Route: GET /api/members
+            # Route: GET /api/members
             if parts == ["api", "members"]:
                 members = gym_service.list_members()
-                self._send_json(200, [member.to_dict() for member in members])
-            #Route: GET /api/classes
+                self._send_json(200, [m.to_dict() for m in members])
+                
+            # Route: GET /api/members/<id>
+            elif len(parts) == 3 and parts[0] == "api" and parts[1] == "members":
+                member = gym_service.get_member(parts[2])
+                self._send_json(200, member.to_dict())
+                
+            # Route: GET /api/classes OR GET /api/classes?min_capacity=10
             elif parts == ["api", "classes"]:
-                min_cap = query.get("min_capacity", [None])[0]
-                classes = gym_service.list_classes(min_capacity=int(min_cap))
-                self._send_json(200, [cls.to_dict() for cls in classes])
+                min_cap_str = query.get("min_capacity", [None])[0]
+                min_cap = int(min_cap_str) if min_cap_str is not None else None
+                classes = gym_service.list_classes(min_capacity=min_cap)
+                self._send_json(200, [c.to_dict() for c in classes])
+                
+            # Route: GET /api/classes/<id>
+            elif len(parts) == 3 and parts[0] == "api" and parts[1] == "classes":
+                workout_class = gym_service.get_class(parts[2])
+                self._send_json(200, workout_class.to_dict())
+                
             else:
-                self._send_json(404, {"error": "Endpoint not found."})
+                self._send_json(404, {"error": "Endpoint not found"})
+                
+        except NotFoundError as e:
+            self._send_json(404, {"error": str(e)})
         except Exception as e:
-            self._send_json(500, {"error": str(e)}) #Internal server error
+            self._send_json(500, {"error": str(e)})
     def do_POST(self):
         parts, _ = self._parse_url()
         
