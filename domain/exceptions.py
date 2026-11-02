@@ -7,3 +7,6 @@ class NotFoundError(GymError):
 class RuleViolationError(GymError):
     """Raised when a rule violation occurs."""
     pass
+class ValidationError(GymError):
+    """Raised when input is malformed or has the wrong type/shape."""
+    pass
