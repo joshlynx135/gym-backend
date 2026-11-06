@@ -1,8 +1,7 @@
 import uuid
-import threading
 from domain.models import WorkoutClass, BasicMember, PremiumMember
 from domain.exceptions import NotFoundError, RuleViolationError, ValidationError
-from domain.repository import GymRepository
+from repositories.gym_repository import GymRepository
 
 class GymService:
     def __init__(self, repo: GymRepository):

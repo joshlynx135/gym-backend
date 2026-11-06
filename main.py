@@ -3,8 +3,8 @@ from fastapi import FastAPI, Depends, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from domain.repository import GymRepository
-from domain.service import GymService
+from repositories.gym_repository import GymRepository
+from services.gym_service import GymService
 from domain.exceptions import NotFoundError, RuleViolationError, ValidationError
 
 

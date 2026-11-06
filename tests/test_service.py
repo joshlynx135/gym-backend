@@ -1,6 +1,6 @@
 import pytest
-from domain.repository import GymRepository
-from domain.service import GymService
+from repositories.gym_repository import GymRepository
+from services.gym_service import GymService
 from domain.exceptions import RuleViolationError, NotFoundError, ValidationError
 
 @pytest.fixture
