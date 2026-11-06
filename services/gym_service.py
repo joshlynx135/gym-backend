@@ -18,7 +18,7 @@ class GymService:
 
     @staticmethod
     def _validate_capacity(value) -> int:
-        # bool is a subclass of int in Python, so True would sneak through without this check
+        # bool is a subclass of int in Python so True would sneak through without this check
         if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
             raise ValidationError("Capacity must be a positive integer greater than 0.")
         return value
@@ -40,9 +40,9 @@ class GymService:
             return PremiumMember(member_id, name)
         return BasicMember(member_id, name)
 
-    # helpers
+    # Internal helpers
     def _count_bookings(self, member_id: str) -> int:
-        return sum(1 for cls in self.repo.list_classes() if member_id in cls.enrolled_members_ids)
+        return sum(1 for cls in self.repo.list_classes() if cls.is_enrolled(member_id))
 
     # Members
     def create_member(self, name: str, member_type: str) -> Member:
@@ -66,8 +66,7 @@ class GymService:
             all_members = self.repo.list_members()
             if member_type is not None:
                 target = self._validate_member_type(member_type, "Filter type")
-                expected = PremiumMember if target == "PREMIUM" else BasicMember
-                all_members = [m for m in all_members if isinstance(m, expected)]
+                all_members = [m for m in all_members if m.type_name == target]
             return all_members
 
     def update_member(
@@ -87,8 +86,7 @@ class GymService:
             replacement = None
             if new_type is not None:
                 target_type = self._validate_member_type(new_type)
-                current_type = "BASIC" if isinstance(member, BasicMember) else "PREMIUM"
-                if target_type != current_type:
+                if target_type != member.type_name:
                     replacement = self._build_member(member_id, clean_name, target_type)
                     current_bookings = self._count_bookings(member_id)
                     if current_bookings > replacement.get_max_bookings():
@@ -108,8 +106,8 @@ class GymService:
         with self.repo.lock:
             self.get_member(member_id)  # raises NotFoundError if missing
             for workout_class in self.repo.list_classes():
-                if member_id in workout_class.enrolled_members_ids:
-                    workout_class.enrolled_members_ids.remove(member_id)
+                if workout_class.is_enrolled(member_id):
+                    workout_class.unenroll(member_id)
             self.repo.delete_member(member_id)
 
     # Workout classes
@@ -145,20 +143,15 @@ class GymService:
             if new_name is None and new_capacity is None:
                 raise ValidationError("At least one field ('name' or 'max_capacity') must be provided for update.")
 
-            # Validate everything first, mutate nothing
             clean_name = (
                 self._validate_non_empty_string(new_name, "Class name")
                 if new_name is not None else workout_class.name
             )
-            clean_capacity = workout_class.max_capacity
+            # resize() raises BEFORE changing anything if the new capacity is too small
             if new_capacity is not None:
-                clean_capacity = self._validate_capacity(new_capacity)
-                if clean_capacity < len(workout_class.enrolled_members_ids):
-                    raise RuleViolationError("Cannot lower capacity below current enrollments.")
+                workout_class.resize(self._validate_capacity(new_capacity))
 
-            # Apply
-            workout_class.name = clean_name
-            workout_class.max_capacity = clean_capacity
+            workout_class.name = clean_name  # cannot fail, so it goes last
             return workout_class
 
     def delete_class(self, class_id: str) -> None:
@@ -173,17 +166,12 @@ class GymService:
 
             member = self.get_member(member_id)
             workout_class = self.get_class(class_id)
-
-            if member_id in workout_class.enrolled_members_ids:
-                raise RuleViolationError(f"Member {member.name} is already booked for class {workout_class.name}.")
-
-            if len(workout_class.enrolled_members_ids) >= workout_class.max_capacity:
-                raise RuleViolationError(f"Class {workout_class.name} is full.")
-
+            
+            workout_class.ensure_can_enroll(member_id)
             if self._count_bookings(member_id) >= member.get_max_bookings():
                 raise RuleViolationError(f"Member {member.name} has reached their booking limit.")
 
-            workout_class.enrolled_members_ids.append(member_id)
+            workout_class.enroll(member_id)
             return workout_class
 
     def cancel_booking(self, member_id: str, class_id: str) -> WorkoutClass:
@@ -193,8 +181,5 @@ class GymService:
             self.get_member(member_id)
             workout_class = self.get_class(class_id)
 
-            if member_id not in workout_class.enrolled_members_ids:
-                raise RuleViolationError("Member is not enrolled in this class.")
-
-            workout_class.enrolled_members_ids.remove(member_id)
+            workout_class.unenroll(member_id)  # raises RuleViolationError if not enrolled
             return workout_class
