@@ -3,15 +3,13 @@ from typing import Optional
 from fastapi import APIRouter, status
 
 from api.dependencies import ServiceDep
-from api.schemas import BookingCreate, ClassPayload
-
+from api.schemas import BookingCreate, ClassCreate, ClassUpdate
 router = APIRouter(prefix="/api/classes", tags=["Classes"])
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-def create_class(data: ClassPayload, service: ServiceDep):
+def create_class(data: ClassCreate, service: ServiceDep):
     return service.create_class(data.name, data.max_capacity).to_dict()
-
 
 @router.get("")
 def list_classes(service: ServiceDep, min_capacity: Optional[int] = None):
@@ -25,9 +23,8 @@ def get_class(class_id: str, service: ServiceDep):
 
 
 @router.put("/{class_id}")
-def replace_class(class_id: str, data: ClassPayload, service: ServiceDep):
+def update_class(class_id: str, data: ClassUpdate, service: ServiceDep):
     return service.update_class(class_id, new_name=data.name, new_capacity=data.max_capacity).to_dict()
-
 
 @router.delete("/{class_id}")
 def delete_class(class_id: str, service: ServiceDep):
