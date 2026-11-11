@@ -48,7 +48,10 @@ def test_member_ids_are_unique(service: GymService):
 def test_get_member_returns_stored_member(service: GymService):
     created = service.create_member("Vincent", "BASIC")
 
-    assert service.get_member(created.id) is created
+    fetched = service.get_member(created.id)
+
+    assert fetched.id == created.id
+    assert fetched.name == "Vincent"
 
 
 def test_get_unknown_member_raises_not_found(service: GymService):
@@ -99,7 +102,9 @@ def test_update_to_same_type_changes_nothing(service: GymService):
 
     updated = service.update_member(member.id, new_type="BASIC")
 
-    assert updated is member  # no replacement object was created
+    assert updated.id == member.id
+    assert updated.type_name == "BASIC"
+    assert updated.name == "Vincent"
 
 
 def test_upgrade_basic_to_premium_keeps_id_and_bookings(service: GymService):

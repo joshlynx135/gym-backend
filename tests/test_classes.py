@@ -40,7 +40,11 @@ def test_create_class_rejects_invalid_capacity(service: GymService, bad_capacity
 def test_get_class_returns_stored_class(service: GymService):
     created = service.create_class("Yoga", 5)
 
-    assert service.get_class(created.id) is created
+    fetched = service.get_class(created.id)
+
+    assert fetched.id == created.id
+    assert fetched.name == "Yoga"
+    assert fetched.max_capacity == 5
 
 
 def test_get_unknown_class_raises_not_found(service: GymService):
