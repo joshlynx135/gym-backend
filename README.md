@@ -104,12 +104,12 @@ powershell -ExecutionPolicy Bypass -File .\curl_requests.ps1
 | POST | `/api/members` | создать участника `{"name", "type"}` | 201 |
 | GET | `/api/members` | список (фильтр `?type=`) | 200 |
 | GET | `/api/members/{id}` | получить участника | 200 |
-| PUT | `/api/members/{id}` | заменить `{"name", "type"}` | 200 |
+| PUT | `/api/members/{id}` | изменить участника: передайте `name` и/или `type` | 200 |
 | DELETE | `/api/members/{id}` | удалить (с очисткой записей) | 200 |
 | POST | `/api/classes` | создать занятие `{"name", "max_capacity"}` | 201 |
 | GET | `/api/classes` | список (фильтр `?min_capacity=`) | 200 |
 | GET | `/api/classes/{id}` | получить занятие | 200 |
-| PUT | `/api/classes/{id}` | заменить `{"name", "max_capacity"}` | 200 |
+| PUT | `/api/classes/{id}` | изменить занятие: передайте `name` и/или `max_capacity` | 200 |
 | DELETE | `/api/classes/{id}` | удалить занятие | 200 |
 | POST | `/api/classes/{id}/bookings` | записать участника `{"member_id"}` | 201 |
 | DELETE | `/api/classes/{id}/bookings/{member_id}` | отменить запись | 200 |
@@ -120,7 +120,7 @@ powershell -ExecutionPolicy Bypass -File .\curl_requests.ps1
 
 | Код | Когда |
 |---|---|
-| 400 | некорректные данные: неверный JSON, пустое имя, неверный тип, вместимость не положительное целое, неверный фильтр |
+| 400 | некорректные данные: неверный JSON, пустое имя, неверный тип, вместимость не положительное целое, неверный фильтр, пустое тело при изменении |
 | 404 | участник, занятие или URL не найдены |
 | 405 | неподдерживаемый HTTP-метод |
 | 409 | нарушение правил предметной области (см. выше) |
