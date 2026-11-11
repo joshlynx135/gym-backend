@@ -1,0 +1,21 @@
+[project]
+name = "gym-backend"
+version = "0.1.0"
+description = "In-memory gym booking REST API built with FastAPI"
+authors = [
+    { name = "vincent", email = "vsichone135@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.162.0",
+    "pydantic>=2.14.3",
+    "uvicorn>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
