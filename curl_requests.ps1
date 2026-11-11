@@ -108,8 +108,12 @@ Invoke-Api "Replace member (rename)" PUT "/api/members/$vincentId" 200 `
     -Body '{"name":"Vincent S.","type":"BASIC"}' -Contains "Vincent S." | Out-Null
 Invoke-Api "Replace unknown member -> 404" PUT "/api/members/m-doesnotexist" 404 `
     -Body '{"name":"X","type":"BASIC"}' | Out-Null
-Invoke-Api "Replace with invalid body -> 400" PUT "/api/members/$vincentId" 400 `
-    -Body '{"name":"","type":"BASIC"}' | Out-Null
+Invoke-Api "Update only the name (type is kept)" PUT "/api/members/$vincentId" 200 `
+    -Body '{"name":"Vincent T."}' -Contains '"type":"BASIC"' | Out-Null
+Invoke-Api "Update only the type (name is kept)" PUT "/api/members/$samId" 200 `
+    -Body '{"type":"premium"}' -Contains '"type":"PREMIUM"' | Out-Null
+Invoke-Api "Empty update body -> 400" PUT "/api/members/$vincentId" 400 `
+    -Body '{}' -Contains "At least one field" | Out-Null
 
 # =====================================================================
 Section "CLASSES - create, read, filter, update"
@@ -136,8 +140,12 @@ Invoke-Api "Replace class" PUT "/api/classes/$yogaId" 200 `
     -Body '{"name":"Hot Yoga","max_capacity":5}' -Contains "Hot Yoga" | Out-Null
 Invoke-Api "Replace unknown class -> 404" PUT "/api/classes/c-doesnotexist" 404 `
     -Body '{"name":"X","max_capacity":5}' | Out-Null
-Invoke-Api "Replace class with invalid capacity -> 400" PUT "/api/classes/$yogaId" 400 `
-    -Body '{"name":"Hot Yoga","max_capacity":-3}' | Out-Null
+Invoke-Api "Update only the capacity (name is kept)" PUT "/api/classes/$yogaId" 200 `
+    -Body '{"max_capacity":5}' -Contains '"name":"Hot Yoga"' | Out-Null
+Invoke-Api "Update only the name (capacity is kept)" PUT "/api/classes/$boxingId" 200 `
+    -Body '{"name":"Kickboxing"}' -Contains '"max_capacity":1' | Out-Null
+Invoke-Api "Empty class update body -> 400" PUT "/api/classes/$yogaId" 400 `
+    -Body '{}' -Contains "At least one field" | Out-Null
 
 # =====================================================================
 Section "BOOKINGS - domain rules"
