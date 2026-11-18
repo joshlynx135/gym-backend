@@ -1,15 +1,22 @@
 from abc import ABC, abstractmethod
-
+from collections.abc import Iterable
 from domain.exceptions import RuleViolationError
 
 
 class WorkoutClass:
     
-    def __init__(self, class_id: str, name: str, max_capacity: int) -> None:
+    def __init__(
+        self,
+        class_id: str,
+        name: str,
+        max_capacity: int,
+        enrolled_member_ids: Iterable[str] = (),
+    ) -> None:
         self.id = class_id
         self.name = name
         self.max_capacity = max_capacity
-        self._enrolled_member_ids: list[str] = []
+        # list(...) copies the input, so this object never shares a collection with its caller
+        self._enrolled_member_ids: list[str] = list(enrolled_member_ids)
 
     @property
     def enrolled_members_ids(self) -> tuple[str, ...]:
@@ -88,3 +95,11 @@ class PremiumMember(Member):
 
     def get_max_bookings(self) -> int:
         return 3  # Premium members can hold up to 3 bookings at a time
+
+def build_member(member_id: str, name: str, member_type: str) -> Member:
+    """Create the right Member subclass for a stored type label."""
+    if member_type == BasicMember.type_name:
+        return BasicMember(member_id, name)
+    if member_type == PremiumMember.type_name:
+        return PremiumMember(member_id, name)
+    raise ValueError(f"Unknown member type: {member_type}")

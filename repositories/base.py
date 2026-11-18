@@ -1,0 +1,38 @@
+from typing import Optional, Protocol
+
+from domain.models import Member, WorkoutClass
+
+
+class GymRepository(Protocol):
+    """Storage contract that GymService depends on.
+
+    Rules every implementation follows:
+      * get_* and list_* return NEW objects that nobody else holds. Changing them has
+        no effect until save_* is called.
+      * save_* inserts the object, or replaces the stored one with the same id.
+      * for_update=True asks for exclusive access to that record until the current
+        transaction ends (a row lock in PostgreSQL; ignored by the in-memory version).
+      * Deleting a member or a class also removes the bookings that reference it.
+    """
+
+    def next_member_id(self) -> str: ...
+
+    def next_class_id(self) -> str: ...
+
+    def save_member(self, member: Member) -> None: ...
+
+    def get_member(self, member_id: str, *, for_update: bool = False) -> Optional[Member]: ...
+
+    def list_members(self) -> list[Member]: ...
+
+    def delete_member(self, member_id: str) -> None: ...
+
+    def save_class(self, workout_class: WorkoutClass) -> None: ...
+
+    def get_class(self, class_id: str, *, for_update: bool = False) -> Optional[WorkoutClass]: ...
+
+    def list_classes(self) -> list[WorkoutClass]: ...
+
+    def delete_class(self, class_id: str) -> None: ...
+
+    def count_bookings_of_member(self, member_id: str) -> int: ...

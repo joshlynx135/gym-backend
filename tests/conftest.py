@@ -1,15 +1,16 @@
 import pytest
 
-from repositories.gym_repository import GymRepository
+from repositories.in_memory import InMemoryGymRepository
 from services.gym_service import GymService
 
 
 @pytest.fixture
-def repo() -> GymRepository:
-    # new empty "database" for every single test
-    return GymRepository()
+def repo() -> InMemoryGymRepository:
+    # A brand-new, empty store for every single test
+    return InMemoryGymRepository()
 
 
 @pytest.fixture
-def service(repo: GymRepository) -> GymService:
+def service(repo: InMemoryGymRepository) -> GymService:
+    # Dependency injection: we hand the service its storage
     return GymService(repo)

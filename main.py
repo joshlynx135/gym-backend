@@ -2,17 +2,15 @@ from fastapi import FastAPI
 
 from api.error_handlers import register_error_handlers
 from api.routers import classes, members
-from repositories.gym_repository import GymRepository
+from repositories.base import GymRepository
+from repositories.in_memory import InMemoryGymRepository
 
 
 def create_app(repo: GymRepository | None = None) -> FastAPI:
-    
+    """Build a complete, independent Gym API.
+    """
     app = FastAPI(title="Gym API")
-    app.state.repo = repo if repo is not None else GymRepository()
-    register_error_handlers(app)
-    app.include_router(members.router)
-    app.include_router(classes.router)
-    return app
+    app.state.repo = repo if repo is not None else InMemoryGymRepository()
 
 
 app = create_app()

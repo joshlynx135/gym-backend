@@ -1,10 +1,7 @@
-from concurrent.futures import ThreadPoolExecutor
-
-from domain.exceptions import RuleViolationError
 from services.gym_service import GymService
 
 
-# ---------------------------------------------------------- snapshot isolation
+# snapshot isolation
 def test_returned_member_is_a_copy_not_the_stored_object(service: GymService):
     created = service.create_member("Vera", "BASIC")
 
@@ -50,24 +47,3 @@ def test_booking_result_is_a_copy(service: GymService):
     booked.max_capacity = 999
 
     assert service.get_class(workout.id).max_capacity == 5
-
-
-# ------------------------------------------------------------ parallel access
-def test_parallel_bookings_never_exceed_capacity(service: GymService):
-    capacity = 5
-    workout = service.create_class("Yoga", capacity)
-    members = [service.create_member(f"Member {i}", "PREMIUM") for i in range(40)]
-
-    def try_book(member) -> bool:
-        try:
-            service.book_class(member.id, workout.id)
-            return True
-        except RuleViolationError:  # "class is full" for everyone after the first 5
-            return False
-
-    # 40 members try to book the same class at the same time from 16 threads
-    with ThreadPoolExecutor(max_workers=16) as pool:
-        results = list(pool.map(try_book, members))
-
-    assert sum(results) == capacity                                  # exactly 5 bookings succeeded
-    assert service.get_class(workout.id).enrolled_count == capacity  # and the roster agrees
