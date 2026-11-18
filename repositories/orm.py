@@ -38,4 +38,5 @@ class BookingRow(Base):
     class_id: Mapped[str] = mapped_column(
         ForeignKey("classes.id", ondelete="CASCADE", name="fk_bookings_class_id_classes"),
         primary_key=True,
+        index=True,
     )

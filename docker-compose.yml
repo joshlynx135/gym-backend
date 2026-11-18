@@ -2,6 +2,7 @@ services:
   db:
     image: postgres:18
     container_name: gym-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: gym
       POSTGRES_PASSWORD: gym
