@@ -1,9 +1,22 @@
-import copy
+import functools
 from typing import Optional
 
 from domain.exceptions import NotFoundError, RuleViolationError, ValidationError
 from domain.models import Member, WorkoutClass, build_member
 from repositories.base import GymRepository
+
+
+def transactional(method):
+    """Run a service method inside one repository transaction.
+
+    Everything the method saves is committed together when it returns, and rolled back
+    together if it raises, so a failed operation never leaves partial changes behind.
+    """
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self.repo.transaction():
+            return method(self, *args, **kwargs)
+    return wrapper
 
 
 class GymService:
@@ -64,6 +77,7 @@ class GymService:
         return workout_class
 
     # ---- Members ----
+    @transactional
     def create_member(self, name: str, member_type: str) -> Member:
         clean_name = self._validate_non_empty_string(name, "Member name")
         target_type = self._validate_member_type(member_type)
@@ -72,9 +86,11 @@ class GymService:
         self.repo.save_member(member)
         return member
 
+    @transactional
     def get_member(self, member_id: str) -> Member:
         return self._find_member(member_id)
 
+    @transactional
     def list_members(self, member_type: Optional[str] = None) -> list[Member]:
         members = self.repo.list_members()
         if member_type is not None:
@@ -82,6 +98,7 @@ class GymService:
             members = [m for m in members if m.type_name == target]
         return members
 
+    @transactional
     def update_member(
         self, member_id: str, new_name: Optional[str] = None, new_type: Optional[str] = None
     ) -> Member:
@@ -112,11 +129,13 @@ class GymService:
         self.repo.save_member(updated)
         return updated
 
+    @transactional
     def delete_member(self, member_id: str) -> None:
         self._find_member(member_id)  # raises NotFoundError if missing
         self.repo.delete_member(member_id)  # the member's bookings are removed too
 
     # ---- Workout classes ----
+    @transactional
     def create_class(self, name: str, max_capacity: int) -> WorkoutClass:
         clean_name = self._validate_non_empty_string(name, "Class name")
         clean_capacity = self._validate_capacity(max_capacity)
@@ -125,9 +144,11 @@ class GymService:
         self.repo.save_class(workout_class)
         return workout_class
 
+    @transactional
     def get_class(self, class_id: str) -> WorkoutClass:
         return self._find_class(class_id)
 
+    @transactional
     def list_classes(self, min_capacity: Optional[int] = None) -> list[WorkoutClass]:
         classes = self.repo.list_classes()
         if min_capacity is not None:
@@ -136,6 +157,7 @@ class GymService:
             classes = [cls for cls in classes if cls.max_capacity >= min_capacity]
         return classes
 
+    @transactional
     def update_class(
         self, class_id: str, new_name: Optional[str] = None, new_capacity: Optional[int] = None
     ) -> WorkoutClass:
@@ -156,11 +178,13 @@ class GymService:
         self.repo.save_class(workout_class)
         return workout_class
 
+    @transactional
     def delete_class(self, class_id: str) -> None:
         self._find_class(class_id)  # raises NotFoundError if missing
         self.repo.delete_class(class_id)
 
     # ---- Domain operations ----
+    @transactional
     def book_class(self, member_id: str, class_id: str) -> WorkoutClass:
         self._validate_id_pair(member_id, class_id)
 
@@ -178,6 +202,7 @@ class GymService:
         self.repo.save_class(workout_class)
         return workout_class
 
+    @transactional
     def cancel_booking(self, member_id: str, class_id: str) -> WorkoutClass:
         self._validate_id_pair(member_id, class_id)
 

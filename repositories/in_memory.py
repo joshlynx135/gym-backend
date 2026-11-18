@@ -1,6 +1,7 @@
 import copy
 import uuid
 from typing import Optional
+from contextlib import AbstractContextManager, nullcontext
 
 from domain.models import Member, WorkoutClass
 
@@ -66,3 +67,8 @@ class InMemoryGymRepository:
     # Bookings
     def count_bookings_of_member(self, member_id: str) -> int:
         return sum(1 for workout_class in self._classes.values() if workout_class.is_enrolled(member_id))
+
+    # Transations
+    def transaction(self) -> AbstractContextManager[None]:
+        #The in-memory store has nothing to commit or roll back
+        return nullcontext()

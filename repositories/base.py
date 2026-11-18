@@ -1,4 +1,5 @@
 from typing import Optional, Protocol
+from contextlib import AbstractContextManager
 
 from domain.models import Member, WorkoutClass
 
@@ -13,6 +14,8 @@ class GymRepository(Protocol):
       * for_update=True asks for exclusive access to that record until the current
         transaction ends (a row lock in PostgreSQL; ignored by the in-memory version).
       * Deleting a member or a class also removes the bookings that reference it.
+      * transaction() returns a context manager: everything saved inside it is committed
+        together when the block ends normally, and discarded if the block raises.
     """
 
     def next_member_id(self) -> str: ...
@@ -36,3 +39,5 @@ class GymRepository(Protocol):
     def delete_class(self, class_id: str) -> None: ...
 
     def count_bookings_of_member(self, member_id: str) -> int: ...
+
+    def transaction(self) -> AbstractContextManager[None]: ...
