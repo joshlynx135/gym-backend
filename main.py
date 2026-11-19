@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from api.error_handlers import register_error_handlers
-from api.routers import classes, members, trainers
+from api.routers import bookings, classes, members, trainers
 from repositories.database import create_db_engine, create_session_factory, get_database_url
 from repositories.schema import upgrade_schema
 
@@ -27,6 +27,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(members.router)
     app.include_router(classes.router)
     app.include_router(trainers.router)
+    app.include_router(bookings.router)
     return app
 
 

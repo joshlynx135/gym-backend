@@ -69,3 +69,10 @@ class TrainerAssign(BaseModel):
     """Body of PUT /api/classes/{id}/trainer."""
 
     trainer_id: str = Field(..., min_length=1)
+
+class TransferRequest(BaseModel):
+    """Body of POST /api/bookings/transfer."""
+
+    member_id: str = Field(..., min_length=1)
+    from_class_id: str = Field(..., min_length=1)
+    to_class_id: str = Field(..., min_length=1)

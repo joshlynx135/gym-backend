@@ -271,6 +271,35 @@ class GymService:
         return workout_class
 
     @transactional
+    def transfer_booking(
+        self, member_id: str, from_class_id: str, to_class_id: str
+    ) -> tuple[WorkoutClass, WorkoutClass]:
+        """Move a member's booking from one class to another, all or nothing."""
+        self._validate_id_pair(member_id, from_class_id)
+        self._validate_id_pair(member_id, to_class_id)
+        if from_class_id == to_class_id:
+            raise ValidationError("'from_class_id' and 'to_class_id' must be different classes.")
+
+        self._find_member(member_id, for_update=True)
+
+        # Lock both classes in ascending id order. Every transaction uses the same order,
+        # so two opposite transfers (A to B and B to A) can never wait for each other.
+        classes = {
+            class_id: self._find_class(class_id, for_update=True)
+            for class_id in sorted((from_class_id, to_class_id))
+        }
+        source, target = classes[from_class_id], classes[to_class_id]
+
+        # Both objects are private copies and nothing is saved yet: if either rule raises,
+        # no change has been written anywhere
+        source.unenroll(member_id)  # raises if the member is not in the source class
+        target.enroll(member_id)  # raises if the target is full or already has the member
+
+        self.repo.save_class(source)
+        self.repo.save_class(target)  # same transaction as the line above
+        return source, target
+    
+    @transactional
     def assign_trainer(self, class_id: str, trainer_id: str) -> WorkoutClass:
         clean_trainer_id = self._validate_non_empty_string(trainer_id, "Trainer id")
 
