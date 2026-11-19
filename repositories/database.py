@@ -15,7 +15,10 @@ def create_db_engine(url: str | None = None) -> Engine:
     """Create an engine (connection pool). Called once per application, not per request."""
     # pool_pre_ping=True tests a pooled connection before using it, so a connection
     # closed by a database restart is replaced instead of causing an error.
-    return create_engine(url or get_database_url(), pool_pre_ping=True)
+    return create_engine(url or get_database_url(), 
+                         pool_pre_ping=True,
+                         # Seconds to wait for a new connection. Fail fast instead of hanging.
+                        connect_args={"connect_timeout": 5},)
 
 
 def create_session_factory(engine: Engine) -> sessionmaker[Session]:

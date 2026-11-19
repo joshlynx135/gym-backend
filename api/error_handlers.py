@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from sqlalchemy.exc import OperationalError
 
 from domain.exceptions import NotFoundError, RuleViolationError, ValidationError
 
@@ -42,7 +43,13 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_exception(request: Request, exc: StarletteHTTPException):
         return _error(exc.status_code, str(exc.detail))
-
+    
+    # --- Database unreachable (connection refused, timeout, server restarting) ---
+    @app.exception_handler(OperationalError)
+    async def handle_database_unavailable(request: Request, exc: OperationalError):
+        logger.error("Database unavailable on %s %s: %s", request.method, request.url.path, exc)
+        return _error(503, "Database is temporarily unavailable. Try again later.")
+    
     # any bug we didn't anticipate 
     @app.exception_handler(Exception)
     async def handle_unexpected(request: Request, exc: Exception):
