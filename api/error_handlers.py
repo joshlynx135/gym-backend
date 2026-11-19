@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from domain.exceptions import NotFoundError, RuleViolationError, ValidationError
 
@@ -49,6 +49,13 @@ def register_error_handlers(app: FastAPI) -> None:
     async def handle_database_unavailable(request: Request, exc: OperationalError):
         logger.error("Database unavailable on %s %s: %s", request.method, request.url.path, exc)
         return _error(503, "Database is temporarily unavailable. Try again later.")
+
+    # --- A database constraint refused the change (foreign key, unique, check) ---
+    @app.exception_handler(IntegrityError)
+    async def handle_integrity_error(request: Request, exc: IntegrityError):
+        # The service checks every rule first, so this is a last line of defense.
+        logger.warning("Integrity violation on %s %s: %s", request.method, request.url.path, exc)
+        return _error(409, "The operation conflicts with existing data.")
     
     # any bug we didn't anticipate 
     @app.exception_handler(Exception)

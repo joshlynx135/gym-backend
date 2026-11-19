@@ -39,7 +39,7 @@ class ClassCreate(BaseModel):
 
     name: str = Field(..., min_length=1)
     max_capacity: StrictInt = Field(..., gt=0)
-
+    trainer_id: Optional[str] = Field(None, min_length=1)
 
 class ClassUpdate(BaseModel):
     #Body of PUT /api/classes/{id}: send only the fields you want to change
@@ -52,3 +52,20 @@ class BookingCreate(BaseModel):
     #Body of POST /api/classes/{id}/bookings
 
     member_id: str = Field(..., min_length=1)
+
+class TrainerCreate(BaseModel):
+    """Body of POST /api/trainers."""
+
+    name: str = Field(..., min_length=1)
+
+
+class TrainerUpdate(BaseModel):
+    """Body of PUT /api/trainers/{id}: send only the fields you want to change."""
+
+    name: Optional[str] = Field(None, min_length=1)
+
+
+class TrainerAssign(BaseModel):
+    """Body of PUT /api/classes/{id}/trainer."""
+
+    trainer_id: str = Field(..., min_length=1)
