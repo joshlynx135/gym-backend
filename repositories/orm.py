@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy import CheckConstraint, ForeignKey, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -15,6 +17,12 @@ class MemberRow(Base):
     __table_args__ = (
         CheckConstraint("type IN ('BASIC', 'PREMIUM')", name="ck_members_type"),
     )
+class TrainerRow(Base):
+    __tablename__ = "trainers"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+
 
 class ClassRow(Base):
     __tablename__ = "classes"
@@ -22,6 +30,11 @@ class ClassRow(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     max_capacity: Mapped[int] = mapped_column(Integer, nullable=False)
+    trainer_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("trainers.id", ondelete="RESTRICT", name="fk_classes_trainer_id_trainers"),
+        nullable=True,
+        index=True,
+    )
 
     __table_args__ = (
         CheckConstraint("max_capacity > 0", name="ck_classes_max_capacity"),
