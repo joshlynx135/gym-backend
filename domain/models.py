@@ -1,3 +1,4 @@
+from typing import Optional
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from domain.exceptions import RuleViolationError
@@ -11,12 +12,15 @@ class WorkoutClass:
         name: str,
         max_capacity: int,
         enrolled_member_ids: Iterable[str] = (),
+        trainer_id: Optional[str] = None,
     ) -> None:
         self.id = class_id
         self.name = name
         self.max_capacity = max_capacity
         # list(...) copies the input, so this object never shares a collection with its caller
         self._enrolled_member_ids: list[str] = list(enrolled_member_ids)
+        # Id of the trainer who teaches this class, or None when nobody is assigned
+        self.trainer_id = trainer_id
 
     @property
     def enrolled_members_ids(self) -> tuple[str, ...]:
@@ -54,15 +58,33 @@ class WorkoutClass:
             raise RuleViolationError("Cannot lower capacity below current enrollments.")
         self.max_capacity = new_capacity
 
+    def assign_trainer(self, trainer_id: str) -> None:
+        """Set the trainer, replacing any previous one."""
+        self.trainer_id = trainer_id
+
+    def remove_trainer(self) -> None:
+        if self.trainer_id is None:
+            raise RuleViolationError("Class has no trainer assigned.")
+        self.trainer_id = None
+
     def to_dict(self) -> dict:
         return {
             "id": self.id,
             "name": self.name,
             "max_capacity": self.max_capacity,
             "enrolled": self.enrolled_count,
+            "trainer_id": self.trainer_id,
         }
 
+class Trainer:
+    """A person who teaches classes."""
+    def __init__(self, trainer_id: str, name:str) -> None:
+        self.id = trainer_id
+        self.name = name
 
+    def to_dict(self) -> dict:
+        return {"id": self.id, "name": self.name}
+    
 class Member(ABC):
     type_name: str
 

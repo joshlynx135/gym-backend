@@ -2,7 +2,7 @@ import functools
 from typing import Optional
 
 from domain.exceptions import NotFoundError, RuleViolationError, ValidationError
-from domain.models import Member, WorkoutClass, build_member
+from domain.models import Member, Trainer, WorkoutClass, build_member
 from repositories.base import GymRepository
 
 
@@ -76,6 +76,12 @@ class GymService:
             raise NotFoundError(f"Class with ID {class_id} not found.")
         return workout_class
 
+    def _find_trainer(self, trainer_id:str, *, for_update: bool = False) -> Trainer:
+        trainer = self.repo.get_trainer(trainer_id, for_update=for_update)
+        if trainer is None:
+            raise NotFoundError(f"Trainer with ID {trainer_id} not found.")
+        return trainer
+    
     # ---- Members ----
     @transactional
     def create_member(self, name: str, member_type: str) -> Member:
@@ -134,27 +140,78 @@ class GymService:
         self._find_member(member_id)  # raises NotFoundError if missing
         self.repo.delete_member(member_id)  # the member's bookings are removed too
 
+    # ---- Trainers ----
+    @transactional
+    def create_trainer(self, name: str) -> Trainer:
+        clean_name = self._validate_non_empty_string(name, "Trainer name")
+
+        trainer = Trainer(self.repo.next_trainer_id(), clean_name)
+        self.repo.save_trainer(trainer)
+        return trainer
+
+    @transactional
+    def get_trainer(self, trainer_id: str) -> Trainer:
+        return self._find_trainer(trainer_id)
+
+    @transactional
+    def list_trainers(self) -> list[Trainer]:
+        return self.repo.list_trainers()
+
+    @transactional
+    def update_trainer(self, trainer_id: str, new_name: Optional[str] = None) -> Trainer:
+        trainer = self._find_trainer(trainer_id, for_update=True)
+        if new_name is None:
+            raise ValidationError("At least one field ('name') must be provided for update.")
+
+        trainer.name = self._validate_non_empty_string(new_name, "Trainer name")
+        self.repo.save_trainer(trainer)
+        return trainer
+
+    @transactional
+    def delete_trainer(self, trainer_id: str) -> None:
+        # Locking the trainer row stops another request from assigning this trainer
+        # to a class between our check and our delete
+        self._find_trainer(trainer_id, for_update=True)
+        class_count = self.repo.count_classes_of_trainer(trainer_id)
+        if class_count > 0:
+            raise RuleViolationError(
+                f"Cannot delete trainer: {class_count} class(es) still use this trainer. "
+                "Assign another trainer or remove the trainer from those classes first."
+            )
+        self.repo.delete_trainer(trainer_id)
+
     # ---- Workout classes ----
     @transactional
-    def create_class(self, name: str, max_capacity: int) -> WorkoutClass:
+    def create_class(self, name: str, max_capacity: int, trainer_id: Optional[str] = None) -> WorkoutClass:
         clean_name = self._validate_non_empty_string(name, "Class name")
         clean_capacity = self._validate_capacity(max_capacity)
 
-        workout_class = WorkoutClass(self.repo.next_class_id(), clean_name, clean_capacity)
+        clean_trainer_id = None
+        if trainer_id is not None:
+            clean_trainer_id = self._validate_non_empty_string(trainer_id, "Trainer id")
+            self._find_trainer(clean_trainer_id, for_update=True)  # 404 if it does not exist
+
+        workout_class = WorkoutClass(
+            self.repo.next_class_id(), clean_name, clean_capacity, trainer_id=clean_trainer_id
+        )
         self.repo.save_class(workout_class)
         return workout_class
-
+    
     @transactional
     def get_class(self, class_id: str) -> WorkoutClass:
         return self._find_class(class_id)
 
     @transactional
-    def list_classes(self, min_capacity: Optional[int] = None) -> list[WorkoutClass]:
+    def list_classes(
+        self, min_capacity: Optional[int] = None, trainer_id: Optional[str] = None
+    ) -> list[WorkoutClass]:
         classes = self.repo.list_classes()
         if min_capacity is not None:
             if isinstance(min_capacity, bool) or not isinstance(min_capacity, int):
                 raise ValidationError("min_capacity must be an integer.")
             classes = [cls for cls in classes if cls.max_capacity >= min_capacity]
+        if trainer_id is not None:
+            classes = [cls for cls in classes if cls.trainer_id == trainer_id]
         return classes
 
     @transactional
@@ -210,5 +267,25 @@ class GymService:
         workout_class = self._find_class(class_id, for_update=True)
 
         workout_class.unenroll(member_id)  # raises RuleViolationError if not enrolled
+        self.repo.save_class(workout_class)
+        return workout_class
+
+    @transactional
+    def assign_trainer(self, class_id: str, trainer_id: str) -> WorkoutClass:
+        clean_trainer_id = self._validate_non_empty_string(trainer_id, "Trainer id")
+
+        # Lock order everywhere: member, then trainer, then class
+        trainer = self._find_trainer(clean_trainer_id, for_update=True)
+        workout_class = self._find_class(class_id, for_update=True)
+
+        workout_class.assign_trainer(trainer.id)
+        self.repo.save_class(workout_class)
+        return workout_class
+
+    @transactional
+    def remove_trainer(self, class_id: str) -> WorkoutClass:
+        workout_class = self._find_class(class_id, for_update=True)
+
+        workout_class.remove_trainer()  # raises RuleViolationError if there is none
         self.repo.save_class(workout_class)
         return workout_class

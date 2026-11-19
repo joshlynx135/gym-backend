@@ -3,7 +3,7 @@ import uuid
 from typing import Optional
 from contextlib import AbstractContextManager, nullcontext
 
-from domain.models import Member, WorkoutClass
+from domain.models import Member, Trainer, WorkoutClass
 
 
 class InMemoryGymRepository:
@@ -16,6 +16,7 @@ class InMemoryGymRepository:
     def __init__(self) -> None:
         self._members: dict[str, Member] = {}
         self._classes: dict[str, WorkoutClass] = {}
+        self._trainers: dict[str, Trainer] = {}
 
     #ID generation 
     @staticmethod
@@ -68,6 +69,26 @@ class InMemoryGymRepository:
     def count_bookings_of_member(self, member_id: str) -> int:
         return sum(1 for workout_class in self._classes.values() if workout_class.is_enrolled(member_id))
 
+    # Trainers 
+    def next_trainer_id(self) -> str:
+        return self._new_id("t", self._trainers)
+
+    def save_trainer(self, trainer: Trainer) -> None:
+        self._trainers[trainer.id] = copy.deepcopy(trainer)
+
+    def get_trainer(self, trainer_id: str, *, for_update: bool = False) -> Optional[Trainer]:
+        trainer = self._trainers.get(trainer_id)
+        return copy.deepcopy(trainer) if trainer is not None else None
+
+    def list_trainers(self) -> list[Trainer]:
+        return [copy.deepcopy(trainer) for trainer in self._trainers.values()]
+
+    def delete_trainer(self, trainer_id: str) -> None:
+        self._trainers.pop(trainer_id, None)
+
+    def count_classes_of_trainer(self, trainer_id: str) -> int:
+        return sum(1 for workout_class in self._classes.values() if workout_class.trainer_id == trainer_id)
+    
     # Transations
     def transaction(self) -> AbstractContextManager[None]:
         #The in-memory store has nothing to commit or roll back

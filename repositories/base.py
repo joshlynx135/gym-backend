@@ -1,7 +1,7 @@
 from typing import Optional, Protocol
 from contextlib import AbstractContextManager
 
-from domain.models import Member, WorkoutClass
+from domain.models import Member, Trainer, WorkoutClass
 
 
 class GymRepository(Protocol):
@@ -16,6 +16,8 @@ class GymRepository(Protocol):
       * Deleting a member or a class also removes the bookings that reference it.
       * transaction() returns a context manager: everything saved inside it is committed
         together when the block ends normally, and discarded if the block raises.
+      * The database refuses to delete a trainer that classes still reference (RESTRICT);
+        the service checks first, so the user gets a clear error message.
     """
 
     def next_member_id(self) -> str: ...
@@ -39,5 +41,17 @@ class GymRepository(Protocol):
     def delete_class(self, class_id: str) -> None: ...
 
     def count_bookings_of_member(self, member_id: str) -> int: ...
+
+    def next_trainer_id(self) -> str: ...
+
+    def save_trainer(self, trainer: Trainer) -> None: ...
+
+    def get_trainer(self, trainer_id: str, *, for_update: bool = False) -> Optional[Trainer]: ...
+
+    def list_trainers(self) -> list[Trainer]: ...
+
+    def delete_trainer(self, trainer_id: str) -> None: ...
+
+    def count_classes_of_trainer(self, trainer_id: str) -> int: ...
 
     def transaction(self) -> AbstractContextManager[None]: ...

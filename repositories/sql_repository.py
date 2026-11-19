@@ -7,9 +7,8 @@ from typing import Optional
 from sqlalchemy import Select, delete, func, select
 from sqlalchemy.orm import Session
 
-from domain.models import Member, WorkoutClass, build_member
-from repositories.orm import BookingRow, ClassRow, MemberRow
-
+from domain.models import Member, Trainer, WorkoutClass, build_member
+from repositories.orm import BookingRow, ClassRow, MemberRow, TrainerRow
 
 class SqlGymRepository:
     """PostgreSQL repository, following the same contract as the in-memory one.
@@ -44,7 +43,10 @@ class SqlGymRepository:
 
     @staticmethod
     def _to_class(row: ClassRow, member_ids: list[str]) -> WorkoutClass:
-        return WorkoutClass(row.id, row.name, row.max_capacity, enrolled_member_ids=member_ids)
+        return WorkoutClass(
+            row.id, row.name, row.max_capacity,
+            enrolled_member_ids=member_ids, trainer_id=row.trainer_id,
+        )
 
     def _new_id(self, prefix: str, row_type: type) -> str:
         # Loop until we find an id that no row uses
@@ -87,11 +89,17 @@ class SqlGymRepository:
         row = self._session.get(ClassRow, workout_class.id)
         if row is None:
             self._session.add(
-                ClassRow(id=workout_class.id, name=workout_class.name, max_capacity=workout_class.max_capacity)
+                ClassRow(
+                    id=workout_class.id,
+                    name=workout_class.name,
+                    max_capacity=workout_class.max_capacity,
+                    trainer_id=workout_class.trainer_id,
+                )
             )
         else:
             row.name = workout_class.name
             row.max_capacity = workout_class.max_capacity
+            row.trainer_id = workout_class.trainer_id 
         self._session.flush()  # the class row must exist before bookings can reference it
         self._sync_bookings(workout_class.id, set(workout_class.enrolled_members_ids))
 
@@ -146,3 +154,32 @@ class SqlGymRepository:
                 delete(BookingRow).where(BookingRow.class_id == class_id, BookingRow.member_id.in_(removed))
             )
         self._session.flush()
+
+    # --- Trainers ----------------------------------------------------------
+    def next_trainer_id(self) -> str:
+        return self._new_id("t", TrainerRow)
+
+    def save_trainer(self, trainer: Trainer) -> None:
+        row = self._session.get(TrainerRow, trainer.id)
+        if row is None:
+            self._session.add(TrainerRow(id=trainer.id, name=trainer.name))
+        else:
+            row.name = trainer.name
+        self._session.flush()
+
+    def get_trainer(self, trainer_id: str, *, for_update: bool = False) -> Optional[Trainer]:
+        statement = self._locked(select(TrainerRow).where(TrainerRow.id == trainer_id), for_update)
+        row = self._session.execute(statement).scalar_one_or_none()
+        return Trainer(row.id, row.name) if row is not None else None
+
+    def list_trainers(self) -> list[Trainer]:
+        rows = self._session.execute(select(TrainerRow).order_by(TrainerRow.id)).scalars().all()
+        return [Trainer(row.id, row.name) for row in rows]
+
+    def delete_trainer(self, trainer_id: str) -> None:
+        # The database refuses this while a class still references the trainer (RESTRICT)
+        self._session.execute(delete(TrainerRow).where(TrainerRow.id == trainer_id))
+
+    def count_classes_of_trainer(self, trainer_id: str) -> int:
+        statement = select(func.count()).select_from(ClassRow).where(ClassRow.trainer_id == trainer_id)
+        return self._session.execute(statement).scalar_one()

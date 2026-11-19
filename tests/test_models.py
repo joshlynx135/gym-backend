@@ -30,8 +30,9 @@ def test_enroll_adds_member_and_updates_count():
 
     assert workout.is_enrolled("m-1")
     assert workout.enrolled_count == 1
-    assert workout.to_dict() == {"id": "c-1", "name": "Yoga", "max_capacity": 2, "enrolled": 1}
-
+    assert workout.to_dict() == {
+        "id": "c-1", "name": "Yoga", "max_capacity": 2, "enrolled": 1, "trainer_id": None,
+    }
 
 def test_class_becomes_full_exactly_at_capacity():
     workout = WorkoutClass("c-1", "Yoga", 2)
@@ -110,3 +111,22 @@ def test_roster_is_read_only_from_outside():
         workout.enrolled_members_ids.append("m-999")
     with pytest.raises(AttributeError):
         workout.enrolled_members_ids = ()
+
+def test_assign_and_remove_trainer():
+    workout = WorkoutClass("c-1", "Yoga", 5)
+
+    workout.assign_trainer("t-1")
+    assert workout.trainer_id == "t-1"
+
+    workout.assign_trainer("t-2")  # replaces the previous trainer
+    assert workout.trainer_id == "t-2"
+
+    workout.remove_trainer()
+    assert workout.trainer_id is None
+
+
+def test_removing_a_trainer_who_is_not_assigned_is_rejected():
+    workout = WorkoutClass("c-1", "Yoga", 5)
+
+    with pytest.raises(RuleViolationError, match="no trainer"):
+        workout.remove_trainer()
