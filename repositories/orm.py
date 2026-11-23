@@ -1,7 +1,7 @@
 from typing import Optional
 
 from sqlalchemy import CheckConstraint, ForeignKey, Integer, String
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class Base(DeclarativeBase):
     """Parent of all ORM classes. Base.metadata collects every table definition."""
@@ -34,6 +34,10 @@ class ClassRow(Base):
         ForeignKey("trainers.id", ondelete="RESTRICT", name="fk_classes_trainer_id_trainers"),
         nullable=True,
         index=True,
+    )
+    trainer: Mapped[Optional[TrainerRow]] = relationship(viewonly=True, lazy="raise")
+    members: Mapped[list[MemberRow]] = relationship(
+        secondary="bookings", viewonly=True, lazy="raise", order_by=MemberRow.id
     )
 
     __table_args__ = (

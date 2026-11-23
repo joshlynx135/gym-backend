@@ -5,9 +5,9 @@ from contextlib import contextmanager
 from typing import Optional
 
 from sqlalchemy import Select, delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
-from domain.models import Member, Trainer, WorkoutClass, build_member
+from domain.models import ClassDetails, Member, Trainer, WorkoutClass, build_member
 from repositories.orm import BookingRow, ClassRow, MemberRow, TrainerRow
 
 class SqlGymRepository:
@@ -130,6 +130,27 @@ class SqlGymRepository:
             rosters[class_id].append(member_id)
 
         return [self._to_class(row, rosters[row.id]) for row in rows]
+
+    def list_class_details(self) -> list[ClassDetails]:
+        statement = (
+            select(ClassRow)
+            .options(joinedload(ClassRow.trainer), selectinload(ClassRow.members))
+            .order_by(ClassRow.id)
+        )
+        rows = self._session.execute(statement).scalars().all()
+
+        details = []
+        for row in rows:
+            members = tuple(self._to_member(member_row) for member_row in row.members)
+            trainer = Trainer(row.trainer.id, row.trainer.name) if row.trainer is not None else None
+            details.append(
+                ClassDetails(
+                    workout_class=self._to_class(row, [member.id for member in members]),
+                    trainer=trainer,
+                    members=members,
+                )
+            )
+        return details
 
     def delete_class(self, class_id: str) -> None:
         # The database removes this class's bookings itself (ON DELETE CASCADE)

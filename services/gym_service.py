@@ -2,7 +2,7 @@ import functools
 from typing import Optional
 
 from domain.exceptions import NotFoundError, RuleViolationError, ValidationError
-from domain.models import Member, Trainer, WorkoutClass, build_member
+from domain.models import ClassDetails, Member, Trainer, WorkoutClass, build_member
 from repositories.base import GymRepository
 
 
@@ -62,6 +62,19 @@ class GymService:
     #     if member_type == "PREMIUM":
     #         return PremiumMember(member_id, name)
     #     return BasicMember(member_id, name)
+    @staticmethod
+    def _class_filter(min_capacity, trainer_id):
+        """Validate the optional list filters and return a function that tests one class."""
+        if min_capacity is not None and (isinstance(min_capacity, bool) or not isinstance(min_capacity, int)):
+            raise ValidationError("min_capacity must be an integer.")
+
+        def matches(workout_class: WorkoutClass) -> bool:
+            return (
+                (min_capacity is None or workout_class.max_capacity >= min_capacity)
+                and (trainer_id is None or workout_class.trainer_id == trainer_id)
+            )
+
+        return matches
 
     # ---- Internal helpers ----
     def _find_member(self, member_id: str, *, for_update: bool = False) -> Member:
@@ -205,14 +218,15 @@ class GymService:
     def list_classes(
         self, min_capacity: Optional[int] = None, trainer_id: Optional[str] = None
     ) -> list[WorkoutClass]:
-        classes = self.repo.list_classes()
-        if min_capacity is not None:
-            if isinstance(min_capacity, bool) or not isinstance(min_capacity, int):
-                raise ValidationError("min_capacity must be an integer.")
-            classes = [cls for cls in classes if cls.max_capacity >= min_capacity]
-        if trainer_id is not None:
-            classes = [cls for cls in classes if cls.trainer_id == trainer_id]
-        return classes
+        matches = self._class_filter(min_capacity, trainer_id)
+        return [workout_class for workout_class in self.repo.list_classes() if matches(workout_class)]
+
+    @transactional
+    def list_class_details(
+        self, min_capacity: Optional[int] = None, trainer_id: Optional[str] = None
+    ) -> list[ClassDetails]:
+        matches = self._class_filter(min_capacity, trainer_id)
+        return [details for details in self.repo.list_class_details() if matches(details.workout_class)]
 
     @transactional
     def update_class(

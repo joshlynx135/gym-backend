@@ -3,7 +3,7 @@ import uuid
 from typing import Optional
 from contextlib import AbstractContextManager, nullcontext
 
-from domain.models import Member, Trainer, WorkoutClass
+from domain.models import ClassDetails, Member, Trainer, WorkoutClass
 
 
 class InMemoryGymRepository:
@@ -88,6 +88,25 @@ class InMemoryGymRepository:
 
     def count_classes_of_trainer(self, trainer_id: str) -> int:
         return sum(1 for workout_class in self._classes.values() if workout_class.trainer_id == trainer_id)
+
+    # Read models 
+    def list_class_details(self) -> list[ClassDetails]:
+        details = []
+        for workout_class in sorted(self._classes.values(), key=lambda c: c.id):
+            trainer = self._trainers.get(workout_class.trainer_id)  # None when there is no trainer
+            members = tuple(
+                copy.deepcopy(self._members[member_id])
+                for member_id in workout_class.enrolled_members_ids
+                if member_id in self._members
+            )
+            details.append(
+                ClassDetails(
+                    workout_class=copy.deepcopy(workout_class),
+                    trainer=copy.deepcopy(trainer) if trainer is not None else None,
+                    members=members,
+                )
+            )
+        return details
     
     # Transations
     def transaction(self) -> AbstractContextManager[None]:

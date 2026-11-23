@@ -1,7 +1,7 @@
 from typing import Optional, Protocol
 from contextlib import AbstractContextManager
 
-from domain.models import Member, Trainer, WorkoutClass
+from domain.models import ClassDetails, Member, Trainer, WorkoutClass
 
 
 class GymRepository(Protocol):
@@ -54,4 +54,6 @@ class GymRepository(Protocol):
 
     def count_classes_of_trainer(self, trainer_id: str) -> int: ...
 
+    def list_class_details(self) -> list[ClassDetails]: ...
+    
     def transaction(self) -> AbstractContextManager[None]: ...

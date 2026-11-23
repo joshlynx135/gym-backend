@@ -26,3 +26,12 @@ def create_session_factory(engine: Engine) -> sessionmaker[Session]:
     # expire_on_commit=False keeps loaded objects readable after commit().
     # By default SQLAlchemy marks them "expired" and re-queries on the next access.
     return sessionmaker(bind=engine, expire_on_commit=False)
+
+def create_db_engine(url: str | None = None) -> Engine:
+    """Create an engine (connection pool). Called once per application, not per request."""
+    return create_engine(
+        url or get_database_url(),
+        pool_pre_ping=True,
+        connect_args={"connect_timeout": 5},
+        echo=os.environ.get("SQL_ECHO") == "1",
+    )

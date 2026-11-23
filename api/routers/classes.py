@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Literal
 
 from fastapi import APIRouter, status
 
@@ -17,10 +17,12 @@ def list_classes(
     service: ServiceDep,
     min_capacity: Optional[int] = None,
     trainer_id: Optional[str] = None,
+    include: Optional[Literal["details"]] = None,
 ):
-    # Optional filters: GET /api/classes?min_capacity=10&trainer_id=t-1a2b3c4d
+    # GET /api/classes?min_capacity=10&trainer_id=t-1a2b3c4d&include=details
+    if include == "details":
+        return [d.to_dict() for d in service.list_class_details(min_capacity=min_capacity, trainer_id=trainer_id)]
     return [c.to_dict() for c in service.list_classes(min_capacity=min_capacity, trainer_id=trainer_id)]
-
 
 @router.get("/{class_id}")
 def get_class(class_id: str, service: ServiceDep):

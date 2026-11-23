@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
@@ -125,3 +126,17 @@ def build_member(member_id: str, name: str, member_type: str) -> Member:
     if member_type == PremiumMember.type_name:
         return PremiumMember(member_id, name)
     raise ValueError(f"Unknown member type: {member_type}")
+
+@dataclass(frozen=True)
+class ClassDetails:
+    """A read-only view of a class together with the objects it relates to."""
+
+    workout_class: WorkoutClass
+    trainer: Optional[Trainer]
+    members: tuple[Member, ...]
+
+    def to_dict(self) -> dict:
+        data = self.workout_class.to_dict()
+        data["trainer"] = self.trainer.to_dict() if self.trainer is not None else None
+        data["members"] = [member.to_dict() for member in self.members]
+        return data
