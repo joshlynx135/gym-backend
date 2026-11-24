@@ -93,3 +93,16 @@ def test_a_trainer_in_use_cannot_be_deleted_and_stays_stored(make_service):
         service.delete_trainer(trainer.id)
 
     assert make_service().get_trainer(trainer.id).name == "Anna"
+
+
+
+@pytest.mark.parametrize("round_number", [1, 2])
+def test_each_test_starts_with_empty_tables(make_service, round_number):
+    service = make_service()
+
+    assert service.list_members() == []
+    assert service.list_classes() == []
+    assert service.list_trainers() == []
+
+    # If cleaning were broken, this row would still be there when round 2 starts
+    service.create_member("Leftover", "BASIC")

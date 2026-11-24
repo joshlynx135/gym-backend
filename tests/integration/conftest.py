@@ -1,6 +1,5 @@
 import os
 import re
-from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -13,13 +12,12 @@ from repositories.sql_repository import SqlGymRepository
 from services.gym_service import GymService
 
 DEFAULT_TEST_DATABASE_URL = "postgresql+psycopg://gym:gym@localhost:5432/gym_test"
-INTEGRATION_DIR = Path(__file__).parent
 
 
 def pytest_collection_modifyitems(items):
-    """Label every test under tests/integration with the 'integration' marker."""
+    """Label every test that uses the database with the 'integration' marker."""
     for item in items:
-        if INTEGRATION_DIR in item.path.parents:
+        if "database_url" in getattr(item, "fixturenames", ()):
             item.add_marker(pytest.mark.integration)
 
 
@@ -90,15 +88,14 @@ def engine(database_url):
     test_engine.dispose()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def clean_tables(engine):
-    """Empty all tables before every test, so tests cannot affect each other."""
+    """Empty all tables. Tests that need an empty database request this fixture."""
     with engine.begin() as connection:
         connection.execute(text("TRUNCATE TABLE bookings, classes, members, trainers"))
 
-
 @pytest.fixture
-def make_service(engine):
+def make_service(engine, clean_tables):
     """Return a function that builds a GymService with its own database session.
 
     Calling it once is like one HTTP request. Calling it again simulates another request,
