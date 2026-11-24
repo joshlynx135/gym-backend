@@ -15,7 +15,9 @@ class GymRepository(Protocol):
         transaction ends (a row lock in PostgreSQL; ignored by the in-memory version).
       * Deleting a member or a class also removes the bookings that reference it.
       * transaction() returns a context manager: everything saved inside it is committed
-        together when the block ends normally, and discarded if the block raises.
+        together when the block ends normally. The PostgreSQL repository also discards it
+        when the block raises. The in-memory repository is a test double without rollback;
+        that is safe because the service validates everything before it saves anything.
       * The database refuses to delete a trainer that classes still reference (RESTRICT);
         the service checks first, so the user gets a clear error message.
     """
